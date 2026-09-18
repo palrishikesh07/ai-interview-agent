@@ -1,69 +1,170 @@
-import Image from "next/image";
+"use client";
+
+import { useState } from "react";
+
+interface Result {
+  score: number;
+  feedback: string;
+  strengths: string[];
+  weaknesses: string[];
+  nextQuestion: string;
+}
 
 export default function Home() {
+
+  const [topic, setTopic] = useState("Node.js");
+
+  const [question, setQuestion] = useState(
+    "Explain the Node.js event loop."
+  );
+
+  const [answer, setAnswer] = useState("");
+
+  const [result, setResult] = useState<Result | null>(null);
+
+  const [loading, setLoading] = useState(false);
+
+  async function submitAnswer() {
+
+    setLoading(true);
+
+    try {
+
+      const response = await fetch("/api/interview", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          topic,
+          question,
+          answer,
+        }),
+      });
+
+      const data = await response.json();
+
+      setResult(data);
+
+      if (data.nextQuestion) {
+        setQuestion(data.nextQuestion);
+      }
+
+      setAnswer("");
+
+    } catch (error) {
+
+      console.error(error);
+
+    } finally {
+
+      setLoading(false);
+
+    }
+  }
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <main className="min-h-screen p-10">
+
+      <div className="mx-auto max-w-3xl">
+
+        <h1 className="text-4xl font-bold">
+          AI Interview Agent
+        </h1>
+
+        <p className="mt-2">
+          AI-powered technical interview practice
+        </p>
+
+        <div className="mt-8">
+
+          <label>Technology</label>
+
+          <input
+            className="mt-2 w-full rounded border p-3"
+            value={topic}
+            onChange={(e) => setTopic(e.target.value)}
+          />
+
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        <div className="mt-6">
+
+          <h2 className="text-xl font-semibold">
+            Question
+          </h2>
+
+          <div className="mt-2 rounded  p-4">
+            {question}
+          </div>
+
         </div>
-      </main>
-    </div>
+
+        <div className="mt-6">
+
+          <textarea
+            className="h-40 w-full rounded border p-3"
+            placeholder="Enter your answer..."
+            value={answer}
+            onChange={(e) => setAnswer(e.target.value)}
+          />
+
+        </div>
+
+        <button
+          onClick={submitAnswer}
+          disabled={loading || !answer}
+          className="mt-4 rounded bg-black px-6 py-3 text-white"
+        >
+          {loading ? "AI Evaluating..." : "Submit Answer"}
+        </button>
+
+        {result && (
+
+          <div className="mt-8 rounded border p-6">
+
+            <h2 className="text-2xl font-bold">
+              Score: {result.score}/10
+            </h2>
+
+            <p className="mt-4">
+              {result.feedback}
+            </p>
+
+            <h3 className="mt-4 font-bold">
+              Strengths
+            </h3>
+
+            <ul>
+              {result.strengths?.map((item, index) => (
+                <li key={index}>✓ {item}</li>
+              ))}
+            </ul>
+
+            <h3 className="mt-4 font-bold">
+              Weaknesses
+            </h3>
+
+            <ul>
+              {result.weaknesses?.map((item, index) => (
+                <li key={index}>• {item}</li>
+              ))}
+            </ul>
+
+            <h3 className="mt-6 font-bold">
+              Next Question
+            </h3>
+
+            <p className="mt-2">
+              {result.nextQuestion}
+            </p>
+
+          </div>
+
+        )}
+
+      </div>
+
+    </main>
   );
 }
