@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 
 type Evaluation = {
   score: number;
@@ -30,6 +30,12 @@ export default function InterviewSessionPage() {
   const router = useRouter();
   const sessionId = params.sessionId;
 
+  const search = useSearchParams();
+
+  const qsLanguage = search.get("language") ?? "JavaScript";
+  const qsDifficulty = search.get("difficulty") ?? "Easy";
+  const qsQuestionCount = Number(search.get("questionCount") ?? "1") || 1;
+
   const [session, setSession] = useState<SessionPayload | null>(null);
   const [answer, setAnswer] = useState("");
   const [loading, setLoading] = useState(true);
@@ -40,21 +46,40 @@ export default function InterviewSessionPage() {
   const [isComplete, setIsComplete] = useState(false);
 
   useEffect(() => {
-    async function loadSession() {
+    async function loadGeneratedQuestion() {
       try {
-        const response = await fetch(`/api/interview/${sessionId}`);
-        const data = await response.json();
+        setLoading(true);
 
-        if (!response.ok) {
-          throw new Error(data.error || "Unable to load interview");
+        const res = await fetch(`/api/interview/generate`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            language: qsLanguage,
+            difficulty: qsDifficulty,
+            questionNumber: 1,
+            questionCount: qsQuestionCount,
+            history: [],
+          }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || "Unable to generate question");
         }
 
-        if (data.status === "COMPLETED") {
-          router.replace(`/interview/${sessionId}/report`);
-          return;
-        }
-
-        setSession(data);
+        setSession({
+          sessionId,
+          language: qsLanguage,
+          difficulty: qsDifficulty,
+          questionCount: qsQuestionCount,
+          status: "IN_PROGRESS",
+          currentQuestion: {
+            id: "generated-1",
+            text: data.question,
+            order: 1,
+          },
+        });
       } catch (err) {
         setError(err instanceof Error ? err.message : "Something went wrong");
       } finally {
@@ -62,8 +87,8 @@ export default function InterviewSessionPage() {
       }
     }
 
-    loadSession();
-  }, [router, sessionId]);
+    loadGeneratedQuestion();
+  }, [qsLanguage, qsDifficulty, qsQuestionCount, sessionId]);
 
   async function submitAnswer() {
     if (!session?.currentQuestion) {
@@ -81,6 +106,12 @@ export default function InterviewSessionPage() {
           sessionId,
           questionId: session.currentQuestion.id,
           answer,
+          language: session.language,
+          difficulty: session.difficulty,
+          question: session.currentQuestion.text,
+          questionNumber: session.currentQuestion.order,
+          questionCount: session.questionCount,
+          history: [],
         }),
       });
 

@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "../../../lib/prisma";
 
 export async function GET(
   _request: NextRequest,
@@ -8,22 +7,30 @@ export async function GET(
   try {
     const { sessionId } = await params;
 
-    const session = await prisma.interviewSession.findUnique({
-      where: { id: sessionId },
-      include: {
-        questions: {
-          orderBy: { order: "asc" },
-          include: { answer: true },
+    // Mock session data for testing
+    const session = {
+      id: sessionId,
+      topic: "TypeScript",
+      difficulty: "intermediate",
+      questionCount: 5,
+      status: "in_progress",
+      overallScore: null,
+      overallFeedback: null,
+      questions: [
+        {
+          id: "q1",
+          question: "What is TypeScript?",
+          order: 1,
+          answer: null,
         },
-      },
-    });
-
-    if (!session) {
-      return NextResponse.json(
-        { error: "Interview session not found" },
-        { status: 404 }
-      );
-    }
+        {
+          id: "q2",
+          question: "Explain interfaces",
+          order: 2,
+          answer: null,
+        },
+      ],
+    };
 
     const currentQuestion = session.questions.find((question) => !question.answer);
 
@@ -46,20 +53,11 @@ export async function GET(
         id: question.id,
         text: question.question,
         order: question.order,
-        answer: question.answer
-          ? {
-              text: question.answer.answer,
-              score: question.answer.score,
-              feedback: question.answer.feedback,
-              strengths: question.answer.strengths ?? [],
-              weaknesses: question.answer.weaknesses ?? [],
-            }
-          : null,
+        answer: question.answer,
       })),
     });
   } catch (error) {
     console.error(error);
-
     return NextResponse.json(
       { error: "Unable to load interview session" },
       { status: 500 }

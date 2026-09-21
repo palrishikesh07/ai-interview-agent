@@ -34,7 +34,13 @@ export default function Home() {
         throw new Error(data.error || "Unable to start interview");
       }
 
-      router.push(`/interview/${data.sessionId}`);
+      router.push(
+        `/interview/${data.sessionId}?language=${encodeURIComponent(
+          language
+        )}&difficulty=${encodeURIComponent(difficulty)}&questionCount=${encodeURIComponent(
+          String(questionCount)
+        )}`
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
