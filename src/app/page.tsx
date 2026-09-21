@@ -1,170 +1,128 @@
 "use client";
 
-import { useState } from "react";
-
-interface Result {
-  score: number;
-  feedback: string;
-  strengths: string[];
-  weaknesses: string[];
-  nextQuestion: string;
-}
+import { FormEvent, useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  DIFFICULTY_LEVELS,
+  PROGRAMMING_LANGUAGES,
+  QUESTION_COUNTS,
+} from "./lib/interviewConfig";
 
 export default function Home() {
-
-  const [topic, setTopic] = useState("Node.js");
-
-  const [question, setQuestion] = useState(
-    "Explain the Node.js event loop."
-  );
-
-  const [answer, setAnswer] = useState("");
-
-  const [result, setResult] = useState<Result | null>(null);
-
+  const router = useRouter();
+  const [language, setLanguage] = useState(PROGRAMMING_LANGUAGES[0]);
+  const [difficulty, setDifficulty] = useState(DIFFICULTY_LEVELS[1]);
+  const [questionCount, setQuestionCount] = useState(QUESTION_COUNTS[1]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  async function submitAnswer() {
-
+  async function startInterview(event: FormEvent) {
+    event.preventDefault();
     setLoading(true);
+    setError("");
 
     try {
-
-      const response = await fetch("/api/interview", {
+      const response = await fetch("/api/interview/start", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          topic,
-          question,
-          answer,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ language, difficulty, questionCount }),
       });
 
       const data = await response.json();
 
-      setResult(data);
-
-      if (data.nextQuestion) {
-        setQuestion(data.nextQuestion);
+      if (!response.ok) {
+        throw new Error(data.error || "Unable to start interview");
       }
 
-      setAnswer("");
-
-    } catch (error) {
-
-      console.error(error);
-
+      router.push(`/interview/${data.sessionId}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
-
       setLoading(false);
-
     }
   }
 
   return (
-    <main className="min-h-screen p-10">
-
-      <div className="mx-auto max-w-3xl">
-
-        <h1 className="text-4xl font-bold">
-          AI Interview Agent
-        </h1>
-
-        <p className="mt-2">
-          AI-powered technical interview practice
+    <main className="min-h-screen px-6 py-16">
+      <div className="mx-auto max-w-xl">
+        <p className="text-sm font-medium tracking-wide uppercase">
+          Practice interview
+        </p>
+        <h1 className="mt-2 text-4xl font-bold">AI Interview Agent</h1>
+        <p className="mt-3 text-base opacity-80">
+          Choose a language, difficulty, and number of questions. You will
+          answer one question at a time, then get a full report.
         </p>
 
-        <div className="mt-8">
-
-          <label>Technology</label>
-
-          <input
-            className="mt-2 w-full rounded border p-3"
-            value={topic}
-            onChange={(e) => setTopic(e.target.value)}
-          />
-
-        </div>
-
-        <div className="mt-6">
-
-          <h2 className="text-xl font-semibold">
-            Question
-          </h2>
-
-          <div className="mt-2 rounded  p-4">
-            {question}
-          </div>
-
-        </div>
-
-        <div className="mt-6">
-
-          <textarea
-            className="h-40 w-full rounded border p-3"
-            placeholder="Enter your answer..."
-            value={answer}
-            onChange={(e) => setAnswer(e.target.value)}
-          />
-
-        </div>
-
-        <button
-          onClick={submitAnswer}
-          disabled={loading || !answer}
-          className="mt-4 rounded bg-black px-6 py-3 text-white"
-        >
-          {loading ? "AI Evaluating..." : "Submit Answer"}
-        </button>
-
-        {result && (
-
-          <div className="mt-8 rounded border p-6">
-
-            <h2 className="text-2xl font-bold">
-              Score: {result.score}/10
-            </h2>
-
-            <p className="mt-4">
-              {result.feedback}
-            </p>
-
-            <h3 className="mt-4 font-bold">
-              Strengths
-            </h3>
-
-            <ul>
-              {result.strengths?.map((item, index) => (
-                <li key={index}>✓ {item}</li>
+        <form onSubmit={startInterview} className="mt-10 space-y-6">
+          <label className="block">
+            <span className="text-sm font-medium">Programming language</span>
+            <select
+              className="mt-2 w-full rounded border border-current/20 bg-transparent p-3"
+              value={language}
+              onChange={(event) =>
+                setLanguage(event.target.value as typeof language)
+              }
+            >
+              {PROGRAMMING_LANGUAGES.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
               ))}
-            </ul>
+            </select>
+          </label>
 
-            <h3 className="mt-4 font-bold">
-              Weaknesses
-            </h3>
-
-            <ul>
-              {result.weaknesses?.map((item, index) => (
-                <li key={index}>• {item}</li>
+          <fieldset>
+            <legend className="text-sm font-medium">Difficulty</legend>
+            <div className="mt-2 grid grid-cols-3 gap-2">
+              {DIFFICULTY_LEVELS.map((level) => (
+                <button
+                  key={level}
+                  type="button"
+                  onClick={() => setDifficulty(level)}
+                  className={`rounded border px-3 py-2 text-sm ${
+                    difficulty === level
+                      ? "border-current bg-black text-white dark:bg-white dark:text-black"
+                      : "border-current/20"
+                  }`}
+                >
+                  {level}
+                </button>
               ))}
-            </ul>
+            </div>
+          </fieldset>
 
-            <h3 className="mt-6 font-bold">
-              Next Question
-            </h3>
+          <fieldset>
+            <legend className="text-sm font-medium">Number of questions</legend>
+            <div className="mt-2 grid grid-cols-4 gap-2">
+              {QUESTION_COUNTS.map((count) => (
+                <button
+                  key={count}
+                  type="button"
+                  onClick={() => setQuestionCount(count)}
+                  className={`rounded border px-3 py-2 text-sm ${
+                    questionCount === count
+                      ? "border-current bg-black text-white dark:bg-white dark:text-black"
+                      : "border-current/20"
+                  }`}
+                >
+                  {count}
+                </button>
+              ))}
+            </div>
+          </fieldset>
 
-            <p className="mt-2">
-              {result.nextQuestion}
-            </p>
+          {error ? <p className="text-sm text-red-600">{error}</p> : null}
 
-          </div>
-
-        )}
-
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full rounded bg-black px-6 py-3 text-white disabled:opacity-60 dark:bg-white dark:text-black"
+          >
+            {loading ? "Preparing questions..." : "Start interview"}
+          </button>
+        </form>
       </div>
-
     </main>
   );
 }

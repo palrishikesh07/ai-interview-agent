@@ -1,16 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { runInterviewAgent } from "./../../lib/interviewAgent";
+import { prisma } from "./../../lib/prisma";
 
 export async function POST(request: NextRequest) {
-
     try {
-
         const body = await request.json();
 
-        if (!body.topic || !body.answer) {
+        const { email, name } = body;
+
+        if (!email) {
             return NextResponse.json(
                 {
-                    error: "Topic and answer are required",
+                    error: "Email is required",
                 },
                 {
                     status: 400,
@@ -18,21 +18,27 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const result = await runInterviewAgent({
-            topic: body.topic,
-            answer: body.answer,
-            question: body.question,
+        const user = await prisma.user.create({
+            data: {
+                email,
+                name,
+            },
         });
 
-        return NextResponse.json(result);
-
+        return NextResponse.json(
+            {
+                user,
+            },
+            {
+                status: 201,
+            }
+        );
     } catch (error) {
-
         console.error(error);
 
         return NextResponse.json(
             {
-                error: "AI agent failed",
+                error: "Unable to create user",
             },
             {
                 status: 500,
